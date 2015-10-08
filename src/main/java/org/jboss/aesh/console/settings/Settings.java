@@ -21,11 +21,10 @@ package org.jboss.aesh.console.settings;
 
 import org.jboss.aesh.console.AeshContext;
 import org.jboss.aesh.console.helper.InterruptHook;
-import org.jboss.aesh.edit.EditMode;
-import org.jboss.aesh.edit.KeyOperationManager;
 import org.jboss.aesh.edit.Mode;
 import org.jboss.aesh.io.Resource;
 import org.jboss.aesh.terminal.Terminal;
+import org.jline.Console;
 
 import java.io.File;
 import java.io.InputStream;
@@ -49,21 +48,6 @@ public interface Settings extends Cloneable {
      *
      */
     Mode getMode();
-
-    /**
-     * Get current edit mode
-     */
-    EditMode getEditMode();
-
-    /**
-     * Reset edit mode
-     */
-    void resetEditMode();
-
-    /**
-     * Get KeyOperationManager
-     */
-    KeyOperationManager getOperationManager();
 
     /**
      * Get file where history is stored
@@ -108,15 +92,12 @@ public interface Settings extends Cloneable {
      */
     PrintStream getStdErr();
 
+    Console getConsole();
+
     /**
      * Get current terminal
      */
     Terminal getTerminal();
-
-    /**
-     * Get inputrc file location
-     */
-    File getInputrc();
 
     /**
      * Are we logging
@@ -132,11 +113,6 @@ public interface Settings extends Cloneable {
      * Get location of log file
      */
     String getLogFile();
-
-    /**
-     * Do aesh read inputrc during init
-     */
-    boolean doReadInputrc();
 
     /**
      * Is history disabled

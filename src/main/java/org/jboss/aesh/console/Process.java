@@ -33,6 +33,8 @@ public interface Process {
 
     String getInputLine() throws InterruptedException;
 
+    String getInputLine(String prompt, Character mask) throws InterruptedException;
+
     int getPID();
 
     CommandResult getExitResult();

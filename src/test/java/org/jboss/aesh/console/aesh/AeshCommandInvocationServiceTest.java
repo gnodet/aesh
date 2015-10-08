@@ -161,6 +161,11 @@ class FooCommandInvocation implements CommandInvocation {
     }
 
     @Override
+    public String getInputLine(String prompt, Character mask) throws InterruptedException {
+        return commandInvocation.getInputLine(prompt, mask);
+    }
+
+    @Override
     public String getInputLine() throws InterruptedException {
         return commandInvocation.getInputLine();
     }

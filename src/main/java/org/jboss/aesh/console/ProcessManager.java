@@ -94,6 +94,13 @@ public class ProcessManager {
             return "";
     }
 
+    public String getInputLine(int pid, String prompt, Character mask) throws InterruptedException {
+        if(foregroundProcess == pid)
+            return console.getInputLine(prompt, mask);
+        else
+            return "";
+    }
+
     public void putProcessInBackground(int pid) {
         if(foregroundProcess == pid) {
             if(doLogging)

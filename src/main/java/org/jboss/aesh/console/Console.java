@@ -26,8 +26,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -50,8 +50,7 @@ import org.jboss.aesh.console.operator.ControlOperatorParser;
 import org.jboss.aesh.console.operator.RedirectionCompletion;
 import org.jboss.aesh.console.reader.AeshStandardStream;
 import org.jboss.aesh.console.settings.Settings;
-import org.jboss.aesh.edit.EditMode;
-import org.jboss.aesh.edit.actions.Action;
+import org.jboss.aesh.edit.Mode;
 import org.jboss.aesh.history.History;
 import org.jboss.aesh.io.Resource;
 import org.jboss.aesh.parser.AeshLine;
@@ -61,9 +60,13 @@ import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.Shell;
 import org.jboss.aesh.terminal.Terminal;
 import org.jboss.aesh.terminal.TerminalSize;
-import org.jboss.aesh.util.ANSI;
 import org.jboss.aesh.util.FileUtils;
 import org.jboss.aesh.util.LoggerUtil;
+import org.jline.ConsoleReader;
+import org.jline.keymap.BindingReader;
+import org.jline.keymap.KeyMap;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.UserInterruptException;
 
 /**
  * A console reader. Supports ansi terminals
@@ -95,20 +98,18 @@ public class Console {
     private ArrayBlockingQueue<int[]> cursorQueue;
     private volatile boolean readingCursor = false;
 
-    private ExecutorService readerService;
     private ExecutorService executorService;
 
     private AeshContext context;
 
     private ProcessManager processManager;
 
-    private ConsoleBuffer consoleBuffer;
-    private InputProcessor inputProcessor;
-    private CompletionHandler completionHandler;
+    private AeshCompletionHandler completionHandler;
 
     private AeshStandardStream standardStream;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(Console.class.getName());
+    private Prompt prompt = new Prompt("");
 
     public Console(final Settings settings) {
         this.settings = settings;
@@ -151,21 +152,11 @@ public class Console {
         if(running)
             throw new RuntimeException("Cant reset an already running Console, must stop if first!");
         //if we already have reset, just return
-        if(readerService != null && !readerService.isShutdown()) {
+        if(executorService != null && !executorService.isShutdown()) {
             return;
         }
         if(settings.isLogging())
             LOGGER.info("RESET");
-
-        readerService = Executors.newFixedThreadPool(1, new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable runnable) {
-                Thread thread = Executors.defaultThreadFactory().newThread(runnable);
-                thread.setName("Aesh Read Loop " + runnable.hashCode());
-                thread.setDaemon(true);
-                return thread;
-            }
-        });
 
         executorService = Executors.newFixedThreadPool(1, new ThreadFactory() {
             @Override
@@ -177,16 +168,10 @@ public class Console {
         });
         context = settings.getAeshContext();
 
-        if(settings.doReadInputrc())
-            settings = Config.parseInputrc(settings);
-
         settings = Config.readRuntimeProperties(settings);
 
         //init terminal
         settings.getTerminal().init(settings);
-
-        EditMode editMode = settings.getEditMode();
-        editMode.init(this);
 
         inputQueue = new ArrayBlockingQueue<>(50000);
         cursorQueue = new ArrayBlockingQueue<>(1);
@@ -204,13 +189,7 @@ public class Console {
 
         shell = new ConsoleShell(getInternalShell(), this);
 
-        consoleBuffer = new AeshConsoleBufferBuilder()
-                .shell(shell)
-                .editMode(editMode)
-                .ansi(settings.isAnsiConsole())
-                .create();
-
-        completionHandler = new AeshCompletionHandler(context, consoleBuffer, shell, true);
+        completionHandler = new AeshCompletionHandler(context, true);
         //enable completion for redirection
         completionHandler.addCompletion( new RedirectionCompletion());
 
@@ -230,41 +209,6 @@ public class Console {
             exportManager = new ExportManager(settings.getExportFile(), settings.doExportUsesSystemEnvironment());
             completionHandler.addCompletion(new ExportCompletion(exportManager));
         }
-
-        //InterruptHandler for InputProcessor
-        InputProcessorInterruptHook interruptHook = new InputProcessorInterruptHook() {
-            @Override
-            public void handleInterrupt(Action action) {
-                if(settings.hasInterruptHook()) {
-                    settings.getInterruptHook().handleInterrupt(Console.this, action);
-                }
-                else {
-                    if(action == Action.IGNOREEOF) {
-                        displayPrompt();
-                    }
-                    else {
-                        stop();
-                        if(processManager.hasForegroundProcess())
-                            stop();
-                        else {
-                            try {
-                                doStop();
-                            }
-                            catch (IOException e) {
-                                LOGGER.warning("Failed to stop aesh! " + e.getMessage());
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        inputProcessor = new AeshInputProcessorBuilder()
-                .consoleBuffer(consoleBuffer)
-                .completion(completionHandler)
-                .settings(settings)
-                .interruptHook(interruptHook)
-                .create();
     }
 
     /**
@@ -281,7 +225,8 @@ public class Console {
      * @return history
      */
     public History getHistory() {
-        return inputProcessor.getHistory();
+        // TODO: wrap jline history
+        return null;
     }
 
     /**
@@ -290,11 +235,11 @@ public class Console {
      * @param prompt prompt
      */
     public void setPrompt(Prompt prompt) {
-        consoleBuffer.setPrompt(prompt);
+        this.prompt = prompt;
     }
 
     public Prompt getPrompt() {
-        return consoleBuffer.getBuffer().getPrompt();
+        return prompt;
     }
 
     public ExportManager getExportManager() {
@@ -311,7 +256,6 @@ public class Console {
 
     public void changeOutputStream(PrintStream output) {
       if(output != null) {
-          consoleBuffer.changeOutputBuffer(output);
           getTerminal().changeOutputStream(output);
       }
     }
@@ -340,8 +284,6 @@ public class Console {
         if(consoleCallback == null)
             throw new IllegalStateException("Not possible to start the Console without setting ConsoleCallback");
         running = true;
-        displayPrompt();
-        startReader();
         startExecutor();
         if(settings.getExecuteAtStart() != null)
             pushToInputStream(settings.getExecuteAtStart());
@@ -350,20 +292,20 @@ public class Console {
         }
     }
 
-    private PrintStream out() {
+    private PrintWriter out() {
         //if redirection enabled, put it into a buffer
         if(currentOperation != null && currentOperation.getControlOperator().isRedirectionOut()) {
-            return new PrintStream(redirectPipeOutBuffer, true);
+            return new PrintWriter(redirectPipeOutBuffer, true);
         }
         else {
             return getInternalShell().out();
         }
     }
 
-    private PrintStream err(){
+    private PrintWriter err(){
         //if redirection enabled, put it into a buffer
         if(currentOperation != null && currentOperation.getControlOperator().isRedirectionErr()) {
-            return new PrintStream(redirectPipeErrBuffer, true);
+            return new PrintWriter(redirectPipeErrBuffer, true);
         }
         else {
             return getInternalShell().err();
@@ -442,13 +384,11 @@ public class Console {
                 LOGGER.log(Level.WARNING, "InputQueue still contains items after stop: "+inputQueue.toString());
             }
 
-            inputProcessor.getHistory().stop();
             if(aliasManager != null)
                 aliasManager.persist();
             if(exportManager != null)
                 exportManager.persistVariables();
             processManager.stop();
-            readerService.shutdown();
             executorService.shutdown();
             if(settings.isLogging())
                 LOGGER.info("Done stopping services. Terminal is reset");
@@ -466,16 +406,19 @@ public class Console {
         return running;
     }
 
-    public void clearBufferAndDisplayPrompt() {
-        inputProcessor.clearBufferAndDisplayPrompt();
-    }
-
     protected CommandOperation getInput() throws InterruptedException {
-        return inputQueue.take();
-    }
-
-    protected InputProcessor getInputProcessor() {
-        return inputProcessor;
+        BindingReader reader = new BindingReader(settings.getConsole(), Key.UNKNOWN);
+        KeyMap keymap = new KeyMap();
+        for (Key key : Key.values()) {
+            StringBuilder sb = new StringBuilder();
+            for (int c : key.getKeyValues()) {
+                sb.append((char) c);
+            }
+            keymap.bindIfNotBound(key, sb);
+        }
+        Key key = (Key) reader.readBinding(keymap);
+        int[] input = reader.getLastBinding().codePoints().toArray();
+        return new CommandOperation(key, input);
     }
 
     /**
@@ -509,24 +452,35 @@ public class Console {
      * This method will block until enter is pressed or because of interruption.
      *
      * @return input
-     * @throws InterruptedException
+     * @throws UserInterruptException
      */
-    public String getInputLine() throws InterruptedException {
+    public String getInputLine() throws UserInterruptException {
+        Prompt prompt = getPrompt();
+        return getInputLine(prompt.hasANSI() ? prompt.getANSI() : prompt.getPromptAsString(), prompt.getMask());
+    }
+
+    public String getInputLine(String prompt, Character mask) throws UserInterruptException {
         String result;
         try {
             do {
-                result = inputProcessor.parseOperation(getInput());
+                settings.getConsole().getConsoleReaderBuilder()
+                        .completer(completionHandler);
+                ConsoleReader reader = settings.getConsole().newConsoleReader();
+                if (settings.getMode() == Mode.VI) {
+                    reader.getKeyMaps().put(ConsoleReader.MAIN, reader.getKeyMaps().get(ConsoleReader.VIINS));
+                }
+                result = reader.readLine(prompt, mask);
             }
             while(result == null);
 
             return result;
         }
-        catch(InterruptedException e) {
+        catch(UserInterruptException e) {
            LOGGER.log(Level.WARNING, "GOT INTERRUPTED: ",e);
            throw e;
         }
-        catch(IOException ioe) {
-            LOGGER.log(Level.WARNING, "Failure while reading input: ",ioe);
+        catch(EndOfFileException eof) {
+            LOGGER.log(Level.WARNING, "Failure while reading input: ",eof);
             return null;
         }
     }
@@ -556,16 +510,8 @@ public class Console {
               e.printStackTrace();
             }
 
-            if(tmpOutput != null && !readerService.isShutdown())
+            if(tmpOutput != null)
                 processManager.startNewProcess(consoleCallback, tmpOutput);
-
-            inputProcessor.clearBufferAndDisplayPrompt();
-        }
-        else {
-            if(running || !inputQueue.isEmpty()) {
-                inputProcessor.resetBuffer();
-                displayPrompt();
-            }
         }
     }
 
@@ -579,30 +525,7 @@ public class Console {
      * @return current buffer
      */
     public String getBuffer() {
-        if(consoleBuffer.getBuffer() == null)
-            return "";
-        else
-            return consoleBuffer.getBuffer().getLineNoMask();
-    }
-
-    /**
-     * Read from the input stream, perform action according to mapped
-     * operations/completions/etc
-     */
-    private void startReader() {
-        reading = true;
-        Runnable reader = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    while(read()) { }
-                }
-                finally {
-                    reading = false;
-                }
-            }
-        };
-        readerService.execute(reader);
+        throw new UnsupportedOperationException();
     }
 
     private void startExecutor() {
@@ -627,99 +550,26 @@ public class Console {
         executorService.execute(reader);
     }
 
-    private boolean read() {
-        try {
-            readingInput = getTerminal().read();
-            if(settings.isLogging()) {
-                LOGGER.info("GOT: " + Arrays.toString(readingInput));
-            }
-            if(readingCursor) {
-                if(readingInput.length > 4) {
-                    cursorQueue.add(readingInput);
-                    readingCursor = false;
-                    return true;
-                }
-            }
-            //close thread, exit
-            if(readingInput.length == 0 || readingInput[0] == -1 || initiateStop) {
-                LOGGER.info("Received null input or -1, or stop() has been called, stop reading");
-                return false;
-            }
-
-            parseInput(readingInput);
-            return true;
-        }
-        catch (IOException ioe) {
-            if(settings.isLogging())
-                LOGGER.log(Level.SEVERE, "Stream failure, stopping Aesh: ",ioe);
-            //if we get an ioexception/interrupted exp its either input or output failure
-            //lets just stop while we can...
-            stop();
-            return false;
-        }
-        catch (InterruptedException e) {
-            if(settings.isLogging())
-                LOGGER.log(Level.SEVERE, "Stream failure, stopping Aesh: ",e);
-            return false;
-        }finally {
-            readingInput = null;
-        }
-    }
-
-    private void parseInput(int[] input) throws InterruptedException {
-        boolean parsing = true;
-        //use a position instead of changing the array
-        int position = 0;
-        //if we get a paste or have input lag this should parse it correctly...
-        while(parsing) {
-            Key inc = Key.findStartKey(input, position);
-            if(input.length > inc.getKeyValues().length+position) {
-                position += inc.getKeyValues().length;
-            }
-            else {
-                parsing = false;
-            }
-            //if we get ctrl-c/d while a process is running we'll try to kill
-            if((inc == Key.CTRL_C || inc == Key.CTRL_D) &&
-                    processManager.hasForegroundProcess()) {
-                //try to kill running process
-                try {
-                    if(settings.isLogging())
-                        LOGGER.info("killing process: "+processManager.getCurrentProcess().getPID());
-                    processManager.getCurrentProcess().interrupt();
-                }
-                catch(InterruptedException ie) {
-                    ie.printStackTrace();
-                }
-            }
-            else {
-                inputQueue.put(new CommandOperation(inc, input, position));
-            }
-        }
-    }
-
     private void execute() {
-        while(!processManager.hasForegroundProcess() && hasInput()) {
+        while(!processManager.hasForegroundProcess()) {
             processing = true;
             try {
-                processInternalOperation(getInput());
+                processInternalOperation();
             }
-            catch (IOException | InterruptedException e) {
-                if(settings.isLogging())
-                    LOGGER.warning("Execution exception: "+e.getMessage());
-            }finally {
+            catch (IOException | UserInterruptException e) {
+                if (settings.isLogging())
+                    LOGGER.warning("Execution exception: " + e.getMessage());
+            } catch (EndOfFileException e) {
+                settings.getConsole().writer().print(Config.getLineSeparator());
+                stop();
+            } finally {
                 processing = false;
             }
         }
-
-        if(!processManager.hasProcesses() && !hasInput() && !reading ){
-            consoleBuffer.out().print(Config.getLineSeparator());
-            stop();
-        }
     }
 
-    private void processInternalOperation(CommandOperation commandOperation) throws IOException {
-        String result = inputProcessor.parseOperation(commandOperation);
+    private void processInternalOperation() throws IOException {
+        String result = getInputLine();
         if(result != null)
             processOperationResult(result);
     }
@@ -729,7 +579,6 @@ public class Console {
             //if the input length is 0 we should exit quickly
             //if we are stopping, dont print the prompt
             if(result.length() == 0 && running) {
-                inputProcessor.clearBufferAndDisplayPrompt();
                 return;
             }
             if(result.startsWith(Parser.SPACE))
@@ -751,18 +600,11 @@ public class Console {
                 //if(readerService.isShutdown())
                 //    return;
             }
-            else {
-                inputProcessor.clearBufferAndDisplayPrompt();
-            }
         }
         catch (IOException ioe) {
             if(settings.isLogging())
                 LOGGER.severe("Stream failure: "+ioe);
         }
-    }
-
-    private void displayPrompt() {
-        consoleBuffer.displayPrompt();
     }
 
     /**
@@ -771,7 +613,7 @@ public class Console {
      * @throws IOException stream
      */
     public void clear() throws IOException {
-        consoleBuffer.clear(false);
+        getShell().clear();
     }
 
     private ConsoleOperation parseCurrentOperation() throws IOException {
@@ -1069,12 +911,12 @@ public class Console {
         }
 
         @Override
-        public PrintStream out() {
+        public PrintWriter out() {
             return console.out();
         }
 
         @Override
-        public PrintStream err() {
+        public PrintWriter err() {
             return console.err();
         }
 
@@ -1090,6 +932,7 @@ public class Console {
 
         @Override
         public CursorPosition getCursor() {
+            /*
             if(console.settings.isAnsiConsole() && Config.isOSPOSIXCompatible()) {
                 try {
                     out().print(ANSI.CURSOR_ROW);
@@ -1105,6 +948,8 @@ public class Console {
                 }
             }
             return new CursorPosition(-1,-1);
+            */
+            throw new UnsupportedOperationException();
         }
 
         private CursorPosition getActualCursor(int[] input) {

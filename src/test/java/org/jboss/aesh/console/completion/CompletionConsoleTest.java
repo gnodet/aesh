@@ -46,9 +46,6 @@ import org.jboss.aesh.console.ConsoleOperation;
 import org.jboss.aesh.console.command.Command;
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 import org.junit.Test;
 
@@ -57,7 +54,7 @@ import org.junit.Test;
  */
 public class CompletionConsoleTest extends BaseConsoleTest {
 
-    private final KeyOperation completeChar =  new KeyOperation(Key.CTRL_I, Operation.COMPLETE);
+    private final char completeChar = '\t';
 
     private static final byte[] LINE_SEPARATOR = Config.getLineSeparator().getBytes();
 
@@ -99,17 +96,17 @@ public class CompletionConsoleTest extends BaseConsoleTest {
                 console.addCompletion(completion3);
 
                 out.write("foo".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
                 out.write("bar".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
                 out.write("le".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
             }
@@ -169,17 +166,17 @@ public class CompletionConsoleTest extends BaseConsoleTest {
                 completionRegistration.removeCompletion();
 
                 out.write("foo".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
                 out.write("bar".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
                 out.write("le".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
             }
@@ -238,19 +235,19 @@ public class CompletionConsoleTest extends BaseConsoleTest {
                 console.addCompletion(completion3);
 
                 out.write("foo".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
 
                 out.write("bar".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
 
 
                 out.write("le".getBytes());
-                out.write(completeChar.getFirstValue());
+                out.write(completeChar);
                 out.write(LINE_SEPARATOR);
                 out.flush();
             }
@@ -333,7 +330,7 @@ public class CompletionConsoleTest extends BaseConsoleTest {
         console.start();
 
         outputStream.write("le".getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(150);
 
@@ -341,7 +338,7 @@ public class CompletionConsoleTest extends BaseConsoleTest {
 
         outputStream.write(LINE_SEPARATOR);
         outputStream.write("less --".getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(200);

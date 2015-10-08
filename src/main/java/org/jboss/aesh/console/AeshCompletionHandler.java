@@ -19,118 +19,77 @@
  */
 package org.jboss.aesh.console;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Logger;
+
 import org.jboss.aesh.complete.CompleteOperation;
 import org.jboss.aesh.complete.Completion;
 import org.jboss.aesh.console.alias.Alias;
 import org.jboss.aesh.console.alias.AliasManager;
 import org.jboss.aesh.console.operator.ControlOperatorParser;
 import org.jboss.aesh.console.operator.RedirectionCompletion;
-import org.jboss.aesh.edit.Mode;
-import org.jboss.aesh.edit.actions.Action;
-import org.jboss.aesh.edit.actions.PrevWordAction;
 import org.jboss.aesh.parser.Parser;
-import org.jboss.aesh.terminal.Shell;
 import org.jboss.aesh.terminal.TerminalString;
 import org.jboss.aesh.util.LoggerUtil;
-
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
+import org.jline.Candidate;
+import org.jline.Completer;
+import org.jline.ConsoleReader;
+import org.jline.reader.ParsedLine;
 
 /**
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public class AeshCompletionHandler implements CompletionHandler {
+public class AeshCompletionHandler implements Completer {
 
     private volatile boolean enabled = true;
 
     private final AeshContext aeshContext;
-    private boolean askDisplayCompletion = false;
-    private int displayCompletionSize = 100;
     private final List<Completion> completionList;
     private AliasManager aliasManager;
-    private final ConsoleBuffer consoleBuffer;
-    private final Shell shell;
     private final boolean doLogging;
 
     private static final Logger LOGGER = LoggerUtil.getLogger(AeshCompletionHandler.class.getName());
 
-    public AeshCompletionHandler(AeshContext aeshContext, ConsoleBuffer consoleBuffer,
-                                 Shell shell, boolean doLogging) {
+    public AeshCompletionHandler(AeshContext aeshContext, boolean doLogging) {
         completionList = new ArrayList<>();
         this.aeshContext = aeshContext;
-        this.consoleBuffer = consoleBuffer;
-        this.shell = shell;
         this.doLogging = doLogging;
     }
 
-    @Override
     public void setEnabled(boolean enabled){
         this.enabled = enabled;
     }
 
-    @Override
     public void addCompletion(Completion completion) {
         completionList.add(completion);
     }
 
-    @Override
     public void removeCompletion(Completion completion) {
         completionList.remove(completion);
     }
 
-    @Override
-    public boolean doAskDisplayCompletion() {
-        return askDisplayCompletion;
-    }
-
-    @Override
-    public void setAskDisplayCompletion(boolean askDisplayCompletion) {
-        this.askDisplayCompletion = askDisplayCompletion;
-    }
-
-    @Override
-    public void setAskCompletionSize(int size) {
-        displayCompletionSize = size;
-    }
-
-    @Override
-    public int getAskCompletionSize() {
-        return displayCompletionSize;
-    }
-
-    @Override
     public void setAliasManager(AliasManager aliasManager) {
         this.aliasManager = aliasManager;
     }
 
-     /**
-     * Display possible completions.
-     * 1. Find all possible completions
-     * 2. If we find only one, display it.
-     * 3. If we find more than one, display them,
-     *    but not more than 100 at once
-     *
-     * @throws IOException stream
-     */
     @Override
-    public void complete(PrintStream out, Buffer buffer) throws IOException {
+    public void complete(ConsoleReader reader, ParsedLine line, List<Candidate> candidates) {
         if(!enabled)
             return;
 
         if(completionList.size() < 1)
             return;
 
+        String buffer = line.line();
+
         List<CompleteOperation> possibleCompletions = new ArrayList<>();
         int pipeLinePos = 0;
         boolean redirect = false;
-        if(ControlOperatorParser.doStringContainPipelineOrEnd(buffer.getMultiLine())) {
-            pipeLinePos =  ControlOperatorParser.findLastPipelineAndEndPositionBeforeCursor(buffer.getMultiLine(), buffer.getMultiCursor());
+        if(ControlOperatorParser.doStringContainPipelineOrEnd(buffer)) {
+            pipeLinePos =  ControlOperatorParser.findLastPipelineAndEndPositionBeforeCursor(line.line(), line.cursor());
         }
-        if(ControlOperatorParser.findLastRedirectionPositionBeforeCursor(buffer.getMultiLine(), buffer.getMultiCursor()) > pipeLinePos) {
+        if(ControlOperatorParser.findLastRedirectionPositionBeforeCursor(line.line(), line.cursor()) > pipeLinePos) {
             pipeLinePos = 0;
             redirect = true;
         }
@@ -141,10 +100,10 @@ public class AeshCompletionHandler implements CompletionHandler {
             }
             CompleteOperation co;
             if(pipeLinePos > 0) {
-                co = findAliases(buffer.getMultiLine().substring(pipeLinePos, buffer.getMultiCursor()), buffer.getMultiCursor() - pipeLinePos);
+                co = findAliases(line.line().substring(pipeLinePos, line.cursor()), line.cursor() - pipeLinePos);
             }
             else {
-                co = findAliases(buffer.getMultiLine(), buffer.getMultiCursor());
+                co = findAliases(line.line(), line.cursor());
             }
 
             completionList.get(i).complete(co);
@@ -156,113 +115,14 @@ public class AeshCompletionHandler implements CompletionHandler {
         if(doLogging)
             LOGGER.info("Found completions: "+possibleCompletions);
 
-        if(possibleCompletions.size() == 0) {
-            //do nothing
-        }
-        // only one hit, do a completion
-        else if(possibleCompletions.size() == 1 &&
-                possibleCompletions.get(0).getCompletionCandidates().size() == 1) {
-            //some formatted completions might not be valid and shouldnt be displayed
-            displayCompletion(
-                    possibleCompletions.get(0).getFormattedCompletionCandidatesTerminalString().get(0),
-                    buffer, out,
-                    possibleCompletions.get(0).hasAppendSeparator(),
-                    possibleCompletions.get(0).getSeparator());
-        }
-        // more than one hit...
-        else {
-
-            String startsWith = "";
-
-            if(!possibleCompletions.get(0).isIgnoreStartsWith())
-                startsWith = Parser.findStartsWithOperation(possibleCompletions);
-
-            if(startsWith.length() > 0 ) {
-                if(startsWith.contains(" ") && !possibleCompletions.get(0).doIgnoreNonEscapedSpace())
-                    displayCompletion(new TerminalString(Parser.switchSpacesToEscapedSpacesInWord(startsWith), true),
-                            buffer, out,
-                            false, possibleCompletions.get(0).getSeparator());
-                else
-                    displayCompletion(new TerminalString(startsWith, true), buffer, out,
-                            false, possibleCompletions.get(0).getSeparator());
-            }
-                // display all
-                // check size
-            else {
-                List<TerminalString> completions = new ArrayList<>();
-                for(int i=0; i < possibleCompletions.size(); i++)
-                    completions.addAll(possibleCompletions.get(i).getCompletionCandidates());
-
-                if(completions.size() > 100) {
-                    //if(displayCompletion) {
-                     if(askDisplayCompletion) {
-                        displayCompletions(completions, buffer, out);
-                        //displayCompletion = false;
-                         askDisplayCompletion = false;
-                    }
-                    else {
-                        askDisplayCompletion = true;
-                        out.print(Config.getLineSeparator() + "Display all " + completions.size() + " possibilities? (y or n)");
-                    }
-                }
-                // display all
-                else {
-                    displayCompletions(completions, buffer, out);
-                }
+        for (CompleteOperation co : possibleCompletions) {
+            for (TerminalString ts : co.getCompletionCandidates()) {
+                String disp = ts.toString();
+                String val = ts.getCharacters();
+                candidates.add(new Candidate(val, disp, null, null, null, null, true));
             }
         }
-    }
-    /**
-     * Display the completion string in the terminal.
-     * If !completion.startsWith(buffer.getLine()) the completion will be added to the line,
-     * else it will replace whats at the buffer line.
-     *
-     * @param completion partial completion
-     * @param appendSpace if its an actual complete
-     * @throws java.io.IOException stream
-     */
-    private void displayCompletion(TerminalString completion, Buffer buffer, PrintStream out,
-                                   boolean appendSpace, char separator) throws IOException {
-        if(completion.getCharacters().startsWith(buffer.getMultiLine())) {
-            consoleBuffer.performAction(new PrevWordAction(buffer.getMultiCursor(), Action.DELETE, Mode.EMACS));
-            buffer.write(completion.getCharacters());
-            out.print(completion);
 
-            //only append space if its an actual complete, not a partial
-        }
-        else {
-            buffer.write(completion.getCharacters());
-            out.print(completion);
-        }
-        if(appendSpace) { // && fullCompletion.startsWith(buffer.getLine())) {
-            buffer.write(separator);
-            out.print(separator);
-        }
-
-        consoleBuffer.drawLine();
-    }
-
-    /**
-     * Display all possible completions
-     *
-     * @param completions all completion items
-     * @throws IOException stream
-     */
-    private void displayCompletions(List<TerminalString> completions, Buffer buffer,
-                                    PrintStream out) throws IOException {
-        Collections.sort(completions);
-        //printNewline reset cursor pos, so we need to store it
-        int oldCursorPos = buffer.getCursor();
-        out.print(Config.getLineSeparator());
-        buffer.setCursor(oldCursorPos);
-        out.print(Parser.formatDisplayListTerminalString(completions,
-                shell.getSize().getHeight(), shell.getSize().getWidth()));
-        consoleBuffer.displayPrompt();
-        out.print(buffer.getLine());
-        //if we do a complete and the cursor is not at the end of the
-        //buffer we need to move it to the correct place
-        out.flush();
-        consoleBuffer.syncCursor();
     }
 
     private CompleteOperation findAliases(String buffer, int cursor) {

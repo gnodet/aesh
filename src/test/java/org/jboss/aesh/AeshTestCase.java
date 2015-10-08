@@ -55,7 +55,6 @@ public abstract class AeshTestCase extends TestCase {
     public void assertEquals(final String expected, TestBuffer buffer, final boolean lastOnly) throws IOException {
 
         SettingsBuilder builder = new SettingsBuilder();
-        builder.readInputrc(false);
         builder.terminal(new TestTerminal());
         builder.inputStream(new ByteArrayInputStream(buffer.getBytes()));
         builder.outputStream(new PrintStream(new ByteArrayOutputStream()));
@@ -93,7 +92,6 @@ public abstract class AeshTestCase extends TestCase {
     public void assertEqualsViMode(final String expected, TestBuffer buffer) throws Exception {
 
         SettingsBuilder builder = new SettingsBuilder();
-        builder.readInputrc(false);
         builder.terminal(new TestTerminal());
         builder.inputStream(new ByteArrayInputStream(buffer.getBytes()));
         builder.outputStream(new PrintStream(new ByteArrayOutputStream()));

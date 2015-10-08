@@ -91,6 +91,8 @@ public interface CommandInvocation {
      */
     String getInputLine() throws InterruptedException;
 
+    String getInputLine(String prompt, Character mask) throws InterruptedException;
+
     /**
      * The process id.
      *

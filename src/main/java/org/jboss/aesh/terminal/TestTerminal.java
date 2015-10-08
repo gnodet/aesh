@@ -23,6 +23,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 
 import org.jboss.aesh.console.reader.AeshStandardStream;
 import org.jboss.aesh.console.reader.ConsoleInputSession;
@@ -35,8 +36,8 @@ import org.jboss.aesh.console.settings.Settings;
  */
 public class TestTerminal implements Terminal, Shell {
 
-    private PrintStream outWriter;
-    private PrintStream errWriter;
+    private PrintWriter outWriter;
+    private PrintWriter errWriter;
     private TerminalSize size;
     private ConsoleInputSession input;
     private InputStream in;
@@ -45,8 +46,8 @@ public class TestTerminal implements Terminal, Shell {
     public void init(Settings settings) {
         input =  new ConsoleInputSession(settings.getInputStream());
         in = settings.getInputStream();
-        outWriter = new PrintStream(settings.getStdOut(), true);
-        errWriter = new PrintStream(settings.getStdErr(), true);
+        outWriter = new PrintWriter(settings.getStdOut(), true);
+        errWriter = new PrintWriter(settings.getStdErr(), true);
 
         size = new TerminalSize(24,80);
     }
@@ -118,7 +119,7 @@ public class TestTerminal implements Terminal, Shell {
     }
 
     @Override
-    public PrintStream err() {
+    public PrintWriter err() {
         return errWriter;
     }
 
@@ -128,7 +129,7 @@ public class TestTerminal implements Terminal, Shell {
     }
 
     @Override
-    public PrintStream out() {
+    public PrintWriter out() {
         return outWriter;
     }
 
@@ -139,7 +140,7 @@ public class TestTerminal implements Terminal, Shell {
 
     @Override
     public void changeOutputStream(PrintStream output) {
-        outWriter = output;
+        outWriter = new PrintWriter(output);
     }
 
 }

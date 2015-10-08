@@ -77,6 +77,11 @@ public class AeshProcess implements Runnable, Process {
     }
 
     @Override
+    public String getInputLine(String prompt, Character mask) throws InterruptedException {
+        return manager.getInputLine(getPID(), prompt, mask);
+    }
+
+    @Override
     public int getPID() {
         return operation.getPid();
     }

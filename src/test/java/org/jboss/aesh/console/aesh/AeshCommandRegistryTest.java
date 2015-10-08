@@ -38,9 +38,6 @@ import org.jboss.aesh.console.command.CommandNotFoundException;
 import org.jboss.aesh.console.command.registry.CommandRegistry;
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 import org.junit.Test;
 
@@ -50,7 +47,7 @@ import org.junit.Test;
 public class AeshCommandRegistryTest {
 
     private static final String WRITTEN = "hgjfiehk";
-    private final KeyOperation completeChar = new KeyOperation(Key.CTRL_I, Operation.COMPLETE);
+    private final char completeChar = '\t';
 
     @Test
     public void testExceptionThrownFromCommandRegistryShouldNotCrashAesh() throws Exception {
@@ -89,7 +86,7 @@ public class AeshCommandRegistryTest {
         AeshConsole aeshConsole = consoleBuilder.create();
         aeshConsole.start();
 
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(80);
         outputStream.write(WRITTEN.getBytes());
@@ -145,7 +142,7 @@ public class AeshCommandRegistryTest {
         AeshConsole aeshConsole = consoleBuilder.create();
         aeshConsole.start();
 
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(100);
         outputStream.write(WRITTEN.getBytes());
@@ -194,7 +191,7 @@ public class AeshCommandRegistryTest {
         AeshConsole aeshConsole = consoleBuilder.create();
         aeshConsole.start();
 
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         outputStream.write(WRITTEN.getBytes());
         outputStream.flush();

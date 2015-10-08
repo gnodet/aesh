@@ -23,6 +23,7 @@ import org.jboss.aesh.console.reader.AeshStandardStream;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 
 /**
  * A Shell is an abstraction of the Terminal that provides easy to use methods
@@ -40,12 +41,12 @@ public interface Shell {
     /**
      * Returns the {@link PrintStream} associated with the std out
      */
-    PrintStream out();
+    PrintWriter out();
 
     /**
      * Returns the {@link PrintStream} associated with the std err
      */
-    PrintStream err();
+    PrintWriter err();
 
     /**
      * Get the possible input stream

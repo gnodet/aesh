@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 
 /**
  * @author <a href="mailto:00hf11@gmail.com">Helio Frota</a>
@@ -48,12 +49,12 @@ public class AeshGraphicsConfigurationTest {
 
     private static class TestShell implements Shell {
 
-        private final PrintStream out;
-        private final PrintStream err;
+        private final PrintWriter out;
+        private final PrintWriter err;
 
         TestShell(PrintStream out, PrintStream err) {
-            this.out = out;
-            this.err = err;
+            this.out = new PrintWriter(out);
+            this.err = new PrintWriter(err);
         }
 
         @Override
@@ -62,12 +63,12 @@ public class AeshGraphicsConfigurationTest {
         }
 
         @Override
-        public PrintStream out() {
+        public PrintWriter out() {
             return out;
         }
 
         @Override
-        public PrintStream err() {
+        public PrintWriter err() {
             return err;
         }
 

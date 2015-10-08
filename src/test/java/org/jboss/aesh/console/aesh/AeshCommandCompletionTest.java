@@ -40,9 +40,6 @@ import org.jboss.aesh.console.command.registry.CommandRegistry;
 import org.jboss.aesh.console.command.CommandResult;
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 import org.junit.Test;
 
@@ -61,8 +58,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class AeshCommandCompletionTest {
 
-    private final KeyOperation completeChar =  new KeyOperation(Key.CTRL_I, Operation.COMPLETE);
-    private final KeyOperation enter =  new KeyOperation(Key.ENTER, Operation.NEW_LINE);
+    private final char completeChar =  '\t';
+    private final char enter =  '\n';
 
     @Test
     public void testCompletion() throws Exception {
@@ -91,13 +88,13 @@ public class AeshCommandCompletionTest {
         aeshConsole.start();
 
         outputStream.write(("foo --name aslak --bar ").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("foo --name aslak --bar bar\\ 2", ((AeshConsoleImpl) aeshConsole).getBuffer());
 
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
@@ -108,7 +105,7 @@ public class AeshCommandCompletionTest {
         Thread.sleep(80);
 
         outputStream.write(("foo --bar bar\\ 2\\ ").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
@@ -119,7 +116,7 @@ public class AeshCommandCompletionTest {
         Thread.sleep(80);
 
         outputStream.write(("foo --bar bar").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
@@ -130,13 +127,13 @@ public class AeshCommandCompletionTest {
         Thread.sleep(80);
 
         outputStream.write(("foo --bar foo ").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("foo --bar foo ", ((AeshConsoleImpl) aeshConsole).getBuffer());
         outputStream.write(("--b").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
@@ -176,7 +173,7 @@ public class AeshCommandCompletionTest {
         aeshConsole.start();
 
         outputStream.write(("arquillian-container-configuration --container arquillian-tomcat-embedded-7 --containerOption ").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
@@ -211,38 +208,38 @@ public class AeshCommandCompletionTest {
         aeshConsole.start();
 
         outputStream.write(("git --").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("git --help ", ((AeshConsoleImpl) aeshConsole).getBuffer());
-        outputStream.write(enter.getFirstValue());
+        outputStream.write(enter);
 
         outputStream.write(("git rebase --").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("git rebase --force ", ((AeshConsoleImpl) aeshConsole).getBuffer());
 
         outputStream.write(("--").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("git rebase --force --test ", ((AeshConsoleImpl) aeshConsole).getBuffer());
-        outputStream.write(enter.getFirstValue());
+        outputStream.write(enter);
         outputStream.flush();
 
         outputStream.write(("git rebase --fo").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("git rebase --force ", ((AeshConsoleImpl) aeshConsole).getBuffer());
 
         outputStream.write(("--test bar").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);

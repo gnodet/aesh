@@ -29,9 +29,6 @@ import org.jboss.aesh.console.Config;
 import org.jboss.aesh.console.Console;
 import org.jboss.aesh.console.ConsoleOperation;
 import org.jboss.aesh.console.Prompt;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.junit.Test;
 
 /**
@@ -44,11 +41,10 @@ public class ConsoleMaskingTest extends BaseConsoleTest {
         invokeTestConsole(new Setup() {
             @Override
             public void call(Console console, OutputStream out) throws IOException {
-                KeyOperation deletePrevChar =  new KeyOperation(Key.CTRL_H, Operation.DELETE_PREV_CHAR);
                 console.setPrompt(new Prompt("", '\u0000'));
 
                 out.write(("mypassword").getBytes());
-                out.write(deletePrevChar.getFirstValue());
+                out.write('\b');
                 out.write((Config.getLineSeparator()).getBytes());
                 out.flush();
             }

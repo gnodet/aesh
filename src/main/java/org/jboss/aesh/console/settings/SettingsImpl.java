@@ -22,19 +22,17 @@ package org.jboss.aesh.console.settings;
 import org.jboss.aesh.console.AeshContext;
 import org.jboss.aesh.console.Config;
 import org.jboss.aesh.console.helper.InterruptHook;
-import org.jboss.aesh.edit.EditMode;
-import org.jboss.aesh.edit.EmacsEditMode;
-import org.jboss.aesh.edit.KeyOperationFactory;
-import org.jboss.aesh.edit.KeyOperationManager;
 import org.jboss.aesh.edit.Mode;
-import org.jboss.aesh.edit.ViEditMode;
 import org.jboss.aesh.io.FileResource;
 import org.jboss.aesh.io.Resource;
-import org.jboss.aesh.terminal.POSIXTerminal;
+import org.jboss.aesh.terminal.JLineTerminal;
 import org.jboss.aesh.terminal.Terminal;
-import org.jboss.aesh.terminal.WindowsTerminal;
+import org.jline.Console;
+import org.jline.JLine;
 
 import java.io.File;
+import java.io.IOError;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
@@ -57,14 +55,12 @@ public class SettingsImpl implements Settings {
     private InputStream inputStream;
     private PrintStream stdOut;
     private PrintStream stdErr;
+    private Console console;
     private Terminal terminal;
-    private boolean readInputrc = true;
-    private File inputrc;
     private boolean isLogging = false;
     private String logFile;
     private boolean disableCompletion = false;
     private QuitHandler quitHandler;
-    private KeyOperationManager operationManager = new KeyOperationManager();
     private File aliasFile;
     private boolean aliasEnabled = true;
     private boolean persistAlias = true;
@@ -95,11 +91,9 @@ public class SettingsImpl implements Settings {
         setStdOut(baseSettings.getStdOut());
         setStdErr(baseSettings.getStdErr());
         setTerminal(baseSettings.getTerminal());
-        setInputrc(baseSettings.getInputrc());
         setLogging(baseSettings.isLogging());
         setDisableCompletion(baseSettings.isCompletionDisabled());
         setLogFile(baseSettings.getLogFile());
-        setReadInputrc(baseSettings.doReadInputrc());
         setHistoryDisabled(baseSettings.isHistoryDisabled());
         setHistoryPersistent(baseSettings.isHistoryPersistent());
         setAliasFile(baseSettings.getAliasFile());
@@ -132,12 +126,10 @@ public class SettingsImpl implements Settings {
         setStdOut(null);
         setStdErr(null);
         terminal = null;
-        readInputrc = true;
         isLogging = false;
         logFile = null;
         disableCompletion = false;
         setQuitHandler(null);
-        operationManager.clear();
         setAliasEnabled(true);
     }
 
@@ -175,43 +167,6 @@ public class SettingsImpl implements Settings {
 
     public void setMode(Mode editMode) {
         this.editMode = editMode;
-    }
-
-    /**
-     * Get EditMode based on os and mode
-     *
-     * @return edit mode
-     */
-    @Override
-    public EditMode getEditMode() {
-        if(Config.isOSPOSIXCompatible()) {
-            if(getMode() == Mode.EMACS)
-                return new EmacsEditMode(getOperationManager());
-            else
-                return new ViEditMode(getOperationManager());
-        }
-        else {
-            if(getMode() == Mode.EMACS)
-                return new EmacsEditMode(getOperationManager());
-            else
-                return new ViEditMode(getOperationManager());
-        }
-    }
-
-    @Override
-    public void resetEditMode() {
-        operationManager.clear();
-    }
-
-    @Override
-    public KeyOperationManager getOperationManager() {
-        if(operationManager.getOperations().size() < 1) {
-            if(getMode() == Mode.EMACS)
-                operationManager.addOperations(KeyOperationFactory.generateEmacsMode());
-            else
-                operationManager.addOperations(KeyOperationFactory.generateViMode());
-        }
-        return operationManager;
     }
 
     /**
@@ -364,6 +319,19 @@ public class SettingsImpl implements Settings {
     }
 
 
+    public Console getConsole() {
+        if (console == null) {
+            try {
+                console = JLine.builder()
+                        .streams(this.inputStream, this.stdOut)
+                        .build();
+            } catch (IOException e) {
+                throw new IOError(e);
+            }
+        }
+        return console;
+    }
+
     /**
      * Use the specified terminal implementation
      * If not set, aesh will try to use the best suited one
@@ -372,10 +340,7 @@ public class SettingsImpl implements Settings {
     @Override
     public Terminal getTerminal() {
         if(terminal == null) {
-            if(Config.isOSPOSIXCompatible())
-                terminal = new POSIXTerminal();
-            else
-                terminal = new WindowsTerminal();
+            terminal = new JLineTerminal(getConsole());
         }
 
         return terminal;
@@ -387,24 +352,6 @@ public class SettingsImpl implements Settings {
      */
     public void setTerminal(Terminal terminal) {
         this.terminal = terminal;
-    }
-
-    /**
-     * Get the inputrc file, if not set it defaults to:
-     * System.getProperty("user.home")+Config.getPathSeparator()+".inputrc"
-     *
-     * @return inputrc
-     */
-    @Override
-    public File getInputrc() {
-        if(inputrc == null) {
-            inputrc = new File(System.getProperty("user.home")+Config.getPathSeparator()+".inputrc");
-        }
-        return inputrc;
-    }
-
-    public void setInputrc(File inputrc) {
-        this.inputrc = inputrc;
     }
 
     /**
@@ -467,27 +414,6 @@ public class SettingsImpl implements Settings {
      */
     public void setLogFile(String logFile) {
         this.logFile = logFile;
-    }
-
-    /**
-     * Should we read config from inputrc
-     * Set to true by default
-     *
-     * @return do we?
-     */
-    @Override
-    public boolean doReadInputrc() {
-        return readInputrc;
-    }
-
-    /**
-     * Specify if we should read config from inputrc
-     * Set to true by default
-     *
-     * @param readInputrc specify
-     */
-    public void setReadInputrc(boolean readInputrc) {
-        this.readInputrc = readInputrc;
     }
 
     /**

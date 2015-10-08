@@ -180,10 +180,6 @@ public class AeshConsoleImpl implements AeshConsole {
         return console.getBuffer();
     }
 
-    public InputProcessor getInputProcessor() {
-        return console.getInputProcessor();
-    }
-
     public void putProcessInBackground(int pid) {
         console.putProcessInBackground(pid);
     }

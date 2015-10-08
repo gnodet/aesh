@@ -37,9 +37,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 
 /**
@@ -53,7 +50,6 @@ public abstract class BaseConsoleTest {
             builder.enableAlias(false);
             builder.persistHistory(false);
         }
-        builder.readInputrc(false);
         builder.terminal(new TestTerminal());
         builder.inputStream(is);
         builder.persistAlias(false);
@@ -61,8 +57,6 @@ public abstract class BaseConsoleTest {
 
         if(!Config.isOSPOSIXCompatible())
             builder.ansi(false);
-
-        builder.create().getOperationManager().addOperation(new KeyOperation(Key.ENTER, Operation.NEW_LINE));
 
         return builder.create();
     }

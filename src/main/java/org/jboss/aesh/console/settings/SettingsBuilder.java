@@ -100,11 +100,6 @@ public class SettingsBuilder {
         return this;
     }
 
-    public SettingsBuilder inputrc(File inputrc) {
-        settings.setInputrc(inputrc);
-        return this;
-    }
-
     public SettingsBuilder logging(boolean logging) {
         settings.setLogging(logging);
         return this;
@@ -117,11 +112,6 @@ public class SettingsBuilder {
 
     public SettingsBuilder logfile(String logFile) {
         settings.setLogFile(logFile);
-        return this;
-    }
-
-    public SettingsBuilder readInputrc(boolean readInputrc) {
-        settings.setReadInputrc(readInputrc);
         return this;
     }
 

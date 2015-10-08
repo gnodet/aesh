@@ -35,9 +35,6 @@ import org.jboss.aesh.console.command.registry.AeshCommandRegistryBuilder;
 import org.jboss.aesh.console.command.registry.CommandRegistry;
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 import org.junit.Test;
 
@@ -54,7 +51,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class AeshCommandOptionActivatorTest {
 
-    private final KeyOperation completeChar =  new KeyOperation(Key.CTRL_I, Operation.COMPLETE);
+    private final char completeChar = '\t';
 
     @Test
     public void testOptionActivator() throws IOException, InterruptedException {
@@ -85,20 +82,20 @@ public class AeshCommandOptionActivatorTest {
 
         aeshConsole.start();
         outputStream.write(("val -").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("val --bar ", ((AeshConsoleImpl) aeshConsole).getBuffer());
 
         outputStream.write(("123 --").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);
         assertEquals("val --bar 123 --", ((AeshConsoleImpl) aeshConsole).getBuffer());
         validatorProvider.updateContext("foo");
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
 
         Thread.sleep(80);

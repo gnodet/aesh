@@ -20,13 +20,14 @@
 package org.jboss.aesh.terminal;
 
 import org.jboss.aesh.console.Config;
+import org.jline.keymap.Binding;
 
 /**
  * ANSCII enum key chart
  *
  * @author <a href="mailto:stale.pedersen@jboss.org">Ståle W. Pedersen</a>
  */
-public enum Key {
+public enum Key implements Binding {
 
     UNKNOWN(new int[]{0}),
     CTRL_A(new int[]{1}),

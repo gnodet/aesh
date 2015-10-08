@@ -28,9 +28,6 @@ import org.jboss.aesh.console.command.registry.AeshCommandRegistryBuilder;
 import org.jboss.aesh.console.command.registry.CommandRegistry;
 import org.jboss.aesh.console.settings.Settings;
 import org.jboss.aesh.console.settings.SettingsBuilder;
-import org.jboss.aesh.edit.KeyOperation;
-import org.jboss.aesh.edit.actions.Operation;
-import org.jboss.aesh.terminal.Key;
 import org.jboss.aesh.terminal.TestTerminal;
 import org.junit.Test;
 
@@ -48,8 +45,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class ExportCommandTest {
 
-    private final KeyOperation completeChar =  new KeyOperation(Key.CTRL_I, Operation.COMPLETE);
-    private final KeyOperation backSpace =  new KeyOperation(Key.BACKSPACE, Operation.DELETE_PREV_CHAR);
+    private final char completeChar = '\t';
+    private final char backSpace = '\b';
 
     @Test
     public void testExportCompletionAndCommand() throws IOException, InterruptedException {
@@ -77,7 +74,7 @@ public class ExportCommandTest {
         aeshConsole.start();
 
         outputStream.write(("exp").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(100);
         assertEquals("export ", ((AeshConsoleImpl) aeshConsole).getBuffer());
@@ -90,12 +87,12 @@ public class ExportCommandTest {
         assertTrue(byteArrayOutputStream.toString().contains("FOO=/tmp"));
 
         outputStream.write(("export BAR=$F").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(100);
         assertEquals("export BAR=$FOO ", ((AeshConsoleImpl) aeshConsole).getBuffer());
 
-        outputStream.write(backSpace.getFirstValue());
+        outputStream.write(backSpace);
         outputStream.write((":/opt"+Config.getLineSeparator()).getBytes());
         outputStream.flush();
         Thread.sleep(100);
@@ -105,14 +102,14 @@ public class ExportCommandTest {
         assertTrue(byteArrayOutputStream.toString().contains("BAR=/tmp:/opt"));
 
         outputStream.write(("$").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(400);
         assertTrue(byteArrayOutputStream.toString().contains("$FOO"));
         assertTrue(byteArrayOutputStream.toString().contains("$BAR"));
 
         outputStream.write(("B").getBytes());
-        outputStream.write(completeChar.getFirstValue());
+        outputStream.write(completeChar);
         outputStream.flush();
         Thread.sleep(400);
         assertEquals("$BAR ", ((AeshConsoleImpl) aeshConsole).getBuffer());

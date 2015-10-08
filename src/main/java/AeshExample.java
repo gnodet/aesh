@@ -16,7 +16,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */import org.jboss.aesh.cl.Arguments;
+ */
+import org.jboss.aesh.cl.Arguments;
 import org.jboss.aesh.cl.CommandDefinition;
 import org.jboss.aesh.cl.GroupCommandDefinition;
 import org.jboss.aesh.cl.Option;
@@ -31,12 +32,8 @@ import org.jboss.aesh.cl.internal.ProcessedOption;
 import org.jboss.aesh.cl.renderer.OptionRenderer;
 import org.jboss.aesh.cl.validator.OptionValidator;
 import org.jboss.aesh.cl.validator.OptionValidatorException;
-import org.jboss.aesh.console.AeshConsoleBufferBuilder;
 import org.jboss.aesh.console.AeshContext;
-import org.jboss.aesh.console.AeshInputProcessorBuilder;
 import org.jboss.aesh.console.Config;
-import org.jboss.aesh.console.ConsoleBuffer;
-import org.jboss.aesh.console.InputProcessor;
 import org.jboss.aesh.console.command.completer.CompleterInvocation;
 import org.jboss.aesh.console.command.registry.AeshCommandRegistryBuilder;
 import org.jboss.aesh.console.AeshConsole;
@@ -119,8 +116,7 @@ public class AeshExample {
                 */
 
         SettingsBuilder builder = new SettingsBuilder().logging(true);
-        builder.enableMan(true)
-                .readInputrc(false);
+        builder.enableMan(true);
                 /*
                 .interruptHook(new InterruptHook() {
                     @Override
@@ -276,21 +272,7 @@ public class AeshExample {
         private String promptForInput(String prompt, Character mask,
                                       CommandInvocation invocation) throws IOException, InterruptedException {
 
-            ConsoleBuffer consoleBuffer = new AeshConsoleBufferBuilder()
-                    .shell(invocation.getShell())
-                    .prompt(new Prompt(prompt, mask))
-                    .create();
-            InputProcessor inputProcessor = new AeshInputProcessorBuilder()
-                    .consoleBuffer(consoleBuffer)
-                    .create();
-
-            consoleBuffer.displayPrompt();
-                String result;
-                do {
-                    result = inputProcessor.parseOperation(invocation.getInput());
-                }
-                while(result == null );
-                return result;
+            return invocation.getInputLine(prompt, mask);
         }
 
     }

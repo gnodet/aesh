@@ -57,6 +57,8 @@ public interface ConsoleCallback {
      */
     String getInputLine() throws InterruptedException;
 
+    String getInputLine(String prompt, Character mask) throws InterruptedException;
+
     /**
      * Internally callback method
      *
