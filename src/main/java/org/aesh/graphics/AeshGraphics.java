@@ -19,10 +19,10 @@
  */
 package org.aesh.graphics;
 
-import org.aesh.terminal.Terminal;
+import org.jline.terminal.Terminal;
+import org.jline.utils.InfoCmp.Capability;
 import org.aesh.terminal.formatting.TerminalColor;
 import org.aesh.terminal.formatting.TerminalTextStyle;
-import org.aesh.tty.Capability;
 import org.aesh.tty.Size;
 import org.aesh.util.ANSI;
 
